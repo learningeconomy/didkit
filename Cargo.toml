@@ -6,6 +6,7 @@ members = [
   "lib/cbindings",
   "lib/web",
 ]
+resolver = "2"
 
 default-members = [
   "http",
@@ -13,6 +14,10 @@ default-members = [
   "lib",
   "lib/cbindings",
 ]
+
+# Fix for getrandom 0.3.x compatibility with wasm32-unknown-unknown target 
+[workspace.dependencies]
+getrandom = { version = "0.3", features = ["wasm_js"] }
 
 # $ cargo release
 [workspace.metadata.release]
