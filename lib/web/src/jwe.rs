@@ -110,18 +110,47 @@ impl JWE {
                 .ok_or(Error::UnableToGetVerificationMethod)?;
 
             for key_agreement in key_agreements {
-                let receiver_public_bytes = match &key_agreement {
+                // Try to extract recipient's X25519 public key from various VM encodings
+                let receiver_public_bytes_opt: Option<Vec<u8>> = match &key_agreement {
                     didkit::ssi::did::VerificationMethod::Map(vm) => {
-                        bs58::decode(&vm.public_key_base58.clone().unwrap())
-                            .into_vec()
-                            .unwrap()
+                        // 1) publicKeyBase58
+                        if let Some(pk_b58) = vm.public_key_base58.clone() {
+                            bs58::decode(&pk_b58).into_vec().ok()
+                        // 2) publicKeyJwk with crv X25519
+                        } else if let Some(jwk) = vm.public_key_jwk.clone() {
+                            match &jwk.params {
+                                Params::OKP(okp) if okp.curve == "X25519" => {
+                                    Some(okp.public_key.0.clone())
+                                }
+                                _ => None,
+                            }
+                        // 3) publicKeyMultibase (Multikey)
+                        } else if let Some(ps) = &vm.property_set {
+                            if let Some(mb) = ps
+                                .get("publicKeyMultibase")
+                                .and_then(|v| v.as_str())
+                            {
+                                decode_public_key_multibase(mb)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
                     }
-                    _ => return Err(Error::UnableToGetVerificationMethod),
+                    // Unsupported VM encoding (e.g., reference) — skip
+                    _ => None,
                 };
 
-                let receiver_mont = X25519Public::from(
-                    <[u8; 32]>::try_from(receiver_public_bytes.as_slice()).unwrap(),
-                );
+                let receiver_public_bytes = match receiver_public_bytes_opt {
+                    Some(bytes) if bytes.len() == 32 => bytes,
+                    _ => continue, // Skip keys we can't interpret as X25519
+                };
+
+                let receiver_mont = match <[u8; 32]>::try_from(receiver_public_bytes.as_slice()) {
+                    Ok(arr) => X25519Public::from(arr),
+                    Err(_) => continue,
+                };
 
                 let mut recipient_iv = [0u8; 24]; // Updated to 24 bytes
                 rng.fill_bytes(&mut recipient_iv);
@@ -361,6 +390,34 @@ fn concat_kdf(secret: &[u8], key_len: u32, alg: &str, consumer_info: Option<&[u8
     input.extend(value);
 
     sha2::Sha256::digest(&input).to_vec()
+}
+
+// Decode a Multibase-encoded multikey for X25519 public keys.
+// Accepts strings like "z..." (base58btc). Expects multicodec prefix x25519-pub (0xEC).
+fn decode_public_key_multibase(mb: &str) -> Option<Vec<u8>> {
+    // Only support base58btc ('z') for now
+    let mut chars = mb.chars();
+    let prefix = chars.next()?;
+    if prefix != 'z' {
+        return None;
+    }
+
+    let b58 = &mb[1..];
+    let bytes = bs58::decode(b58).into_vec().ok()?;
+
+    // Decode multicodec varint prefix
+    let (code, remainder) = unsigned_varint::decode::u64(&bytes).ok()?;
+    // 0xEC is x25519-pub
+    if code != 0xEC {
+        return None;
+    }
+
+    let key_bytes = remainder.to_vec();
+    if key_bytes.len() == 32 {
+        Some(key_bytes)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
