@@ -1,10 +1,8 @@
 name: Notify LearnCard
 
 on:
-  workflow_run:
-    workflows: ['ci']
+  push:
     branches: [main]
-    types: [completed]
 
 permissions:
   contents: read
@@ -12,7 +10,6 @@ permissions:
 jobs:
   notify:
     name: Trigger LearnCard DIDKit WASM update
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch LearnCard update
@@ -31,6 +28,6 @@ jobs:
           gh api "repos/${TARGET_REPO}/dispatches" \
               -f event_type="${EVENT_TYPE}" \
               -f client_payload[source_repo]="${{ github.repository }}" \
-              -f client_payload[source_sha]="${{ github.event.workflow_run.head_sha }}" \
-              -f client_payload[source_branch]="${{ github.event.workflow_run.head_branch }}" \
-              -f client_payload[workflow_run_id]="${{ github.event.workflow_run.id }}"
+              -f client_payload[source_sha]="${{ github.sha }}" \
+              -f client_payload[source_branch]="${{ github.ref_name }}" \
+              -f client_payload[workflow_run_id]="${{ github.run_id }}"
