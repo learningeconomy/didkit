@@ -29,5 +29,6 @@ jobs:
               -f event_type="${EVENT_TYPE}" \
               -f client_payload[source_repo]="${{ github.repository }}" \
               -f client_payload[source_sha]="${{ github.sha }}" \
+              -f client_payload[didkit_ref]="${{ github.sha }}" \
               -f client_payload[source_branch]="${{ github.ref_name }}" \
               -f client_payload[workflow_run_id]="${{ github.run_id }}"
