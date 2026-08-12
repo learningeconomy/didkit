@@ -19,6 +19,7 @@ use didkit::error::Error;
 #[cfg(doc)]
 use didkit::error::{didkit_error_code, didkit_error_message};
 use didkit::get_verification_method;
+use didkit::ssi::did_resolve::{SeriesResolver, StaticDocumentResolver};
 use didkit::ssi::{self, ldp::ProofSuite};
 use didkit::DIDWeb;
 use didkit::LinkedDataProofOptions;
@@ -336,20 +337,24 @@ async fn issue_credential(
     let options: JWTOrLDPOptions = serde_json::from_str(&proof_options)?;
     let context_map: HashMap<String, String> = serde_json::from_str(&context_map)?;
     let proof_format = options.proof_format.unwrap_or_default();
-    let resolver = DID_METHODS.to_resolver();
+    let static_resolver = StaticDocumentResolver::from_json_map(&context_map);
+    let did_resolver = DID_METHODS.to_resolver();
+    let resolver = SeriesResolver {
+        resolvers: vec![&static_resolver, did_resolver],
+    };
     let mut context_loader = ssi::jsonld::ContextLoader::default()
         .with_context_map_from(context_map)
         .unwrap();
     let vc_string = match proof_format {
         ProofFormat::JWT => {
             let vc_jwt = credential
-                .generate_jwt(Some(&key), &options.ldp_options, resolver)
+                .generate_jwt(Some(&key), &options.ldp_options, &resolver)
                 .await?;
             vc_jwt
         }
         ProofFormat::LDP => {
             let proof = credential
-                .generate_proof(&key, &options.ldp_options, resolver, &mut context_loader)
+                .generate_proof(&key, &options.ldp_options, &resolver, &mut context_loader)
                 .await?;
             credential.add_proof(proof);
             let vc_json = serde_json::to_string(&credential)?;
@@ -466,7 +471,11 @@ async fn verify_credential(
     let options: JWTOrLDPOptions = serde_json::from_str(&proof_options)?;
     let context_map: HashMap<String, String> = serde_json::from_str(&context_map)?;
     let proof_format = options.proof_format.unwrap_or_default();
-    let resolver = DID_METHODS.to_resolver();
+    let static_resolver = StaticDocumentResolver::from_json_map(&context_map);
+    let did_resolver = DID_METHODS.to_resolver();
+    let resolver = SeriesResolver {
+        resolvers: vec![&static_resolver, did_resolver],
+    };
     let mut context_loader = ssi::jsonld::ContextLoader::default()
         .with_context_map_from(context_map)
         .unwrap();
@@ -475,14 +484,14 @@ async fn verify_credential(
             VerifiableCredential::verify_jwt(
                 &vc_string,
                 Some(options.ldp_options),
-                resolver,
+                &resolver,
                 &mut context_loader,
             )
             .await
         }
         ProofFormat::LDP => {
             let vc = VerifiableCredential::from_json_unsigned(&vc_string)?;
-            vc.verify(Some(options.ldp_options), resolver, &mut context_loader)
+            vc.verify(Some(options.ldp_options), &resolver, &mut context_loader)
                 .await
         }
         _ => Err(Error::UnknownProofFormat(proof_format.to_string()))?,
