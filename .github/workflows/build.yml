@@ -207,7 +207,13 @@ jobs:
       run: make -C lib install-rustup-ios
 
     - name: Build iOS Library
-      run: make -C lib ../target/test/ios.stamp
+      run: |
+        device_id="$(xcrun simctl list devices available --json | jq -r \
+          '[.devices | to_entries[] | select(.key | contains(".iOS-")) | .value[] |
+            select(.isAvailable and (.name | startswith("iPhone")))][0].udid // empty')"
+        test -n "${device_id}"
+        make -C lib ../target/test/ios.stamp \
+          IOS_TEST_DESTINATION="platform=iOS Simulator,id=${device_id}"
 
   build_windows:
     runs-on: windows-latest
