@@ -1,0 +1,34 @@
+name: Notify LearnCard
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Trigger LearnCard DIDKit WASM update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch LearnCard update
+        env:
+          EVENT_TYPE: didkit-main-updated
+          GH_TOKEN: ${{ secrets.LEARNCARD_DISPATCH_TOKEN }}
+          TARGET_REPO: learningeconomy/LearnCard
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GH_TOKEN}" ]; then
+              echo "::error::Set LEARNCARD_DISPATCH_TOKEN to a token that can dispatch workflows in ${TARGET_REPO}."
+              exit 1
+          fi
+
+          gh api "repos/${TARGET_REPO}/dispatches" \
+              -f event_type="${EVENT_TYPE}" \
+              -f client_payload[source_repo]="${{ github.repository }}" \
+              -f client_payload[source_sha]="${{ github.sha }}" \
+              -f client_payload[didkit_ref]="${{ github.sha }}" \
+              -f client_payload[source_branch]="${{ github.ref_name }}" \
+              -f client_payload[workflow_run_id]="${{ github.run_id }}"
