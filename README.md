@@ -41,28 +41,26 @@ That will give you the DIDKit CLI and HTTP server executables located at
 
 ### Container
 
-Both the CLI and HTTP server are containerised and available under
-`ghcr.io/spruceid/didkit-(cli|http)`.
+This fork's publishing workflow targets `ghcr.io/learningeconomy/didkit-http`.
+Pull requests build the image without publishing it; main and release builds use
+the repository's `GITHUB_TOKEN` to publish.
 
-You can use the images like CLIs:
+Run the HTTP server with:
 ```bash
-$ docker run ghcr.io/spruceid/didkit-cli:latest --help
-$ docker run --init -p 8080 ghcr.io/spruceid/didkit-http:latest --port 8080
+$ docker run --init -p 8080:3000 ghcr.io/learningeconomy/didkit-http:latest
 ```
 
-> You can pass JWKs either by sharing a volume with `docker run --volume`, or by passing the JWK directly with `docker run -e JWK=$MY_JWK` or `docker run didkit-http --jwk $MY_JWK`.
+#### Build the HTTP image
 
-#### Build Images
+Build from a directory containing sibling `didkit/` and `ssi/` checkouts.
+Use the SSI revision pinned in `didkit/.github/workflows/push_image.yml`.
+The build uses these sources and DIDKit's committed workspace lock, rather than
+substituting registry versions for path dependencies.
 
-The Dockerfiles rely on having `ssi` in the root of `didkit` (a symbolic link will not work unfortunately).
-
-Then the images can be built with:
 ```bash
-$ docker build -f Dockerfile-cli . -t didkit-cli
-$ docker build -f Dockerfile-http . -t didkit-http
+$ docker build -f didkit/http/Dockerfile -t didkit-http .
+$ docker run --init -p 8080:3000 didkit-http
 ```
-
-And to use them, replace `ghcr.io/spruceid/didkit-(cli|http):latest` with `didkit-(cli|http)`.
 
 ## Usage
 

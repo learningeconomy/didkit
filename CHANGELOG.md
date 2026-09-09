@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - LC-2160: remove unused web dalek v1 and rand 0.7 dependencies, configure both getrandom JS feature graphs, and upgrade the HTTP JSON-string adapter to patched serde_with 3.x.
-- Track the independent workspace lock, resolved with SSI at `fc0788addb46f6bdfcd3c1932f2aeeff807c612c`. SSI is a path dependency, so `Cargo.lock` does not pin its revision; consumer workspaces still own their native/WASM locks. RSA Marvin remains unresolved and requires separate deployment risk approval.
+- Track the independent workspace lock, resolved with SSI at `9e2783f9f759fc92617f6c27b1c77ec0599cf9a0`. SSI is a path dependency, so `Cargo.lock` does not pin its revision; consumer workspaces still own their native/WASM locks. RSA Marvin remains unresolved and requires separate deployment risk approval.
+- Publish the HTTP image to this fork's GHCR namespace with `GITHUB_TOKEN`, building the locked DIDKit workspace and pinned sibling SSI source; pull requests build without publishing.
+- Return LDP presentation signing errors from the CLI instead of panicking. CI explicitly checks rejection of raw JWT credentials in LDP presentations, preserving strict JSON-LD data-loss protection.
+- Exercise SSH-agent signing with the correct holder flag and fail on command errors; pin the JNI build to compatible JDK 17.
 
 ## [0.4.0] - 2022-03-03
 ### Added
