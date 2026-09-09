@@ -78,8 +78,7 @@ pub async fn issue(args: PresentationIssueArgs) -> Result<()> {
                 &mut context_loader,
                 ssh_agent_sock_opt.as_deref(),
             )
-            .await
-            .unwrap();
+            .await?;
             presentation.add_proof(proof);
             let stdout_writer = BufWriter::new(stdout());
             serde_json::to_writer(stdout_writer, &presentation).unwrap();
