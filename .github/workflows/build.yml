@@ -13,6 +13,7 @@ env:
   CARGO_TERM_COLOR: always
   SSI_REF: 9e2783f9f759fc92617f6c27b1c77ec0599cf9a0
   RUST_TOOLCHAIN: 1.98.0
+  ANDROID_NDK_VERSION: '30.0.16248370'
   RUSTFLAGS: "-Dwarnings"
 
 defaults:
@@ -119,13 +120,16 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v2
     - name: Install NDK
-      run: sdkmanager --install "build-tools;29.0.3" "ndk;22.0.7026061" "cmdline-tools;latest"
-    - name: Install gcc-multilib
-      run: |
-        sudo apt update
-        sudo apt install gcc-multilib -y
+      run: sdkmanager --install "ndk;${ANDROID_NDK_VERSION}"
     - name: Build Android Archive
-      run: AR_i686_linux_android=$ANDROID_SDK_ROOT/ndk/22.0.7026061/toolchains/llvm/prebuilt/linux-x86_64/i686-linux-android/bin/ar PATH=$ANDROID_SDK_ROOT/ndk/22.0.7026061/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH TARGET_CC=$(which clang) cargo build --lib --target i686-linux-android
+      run: |
+        export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION"
+        export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+        TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+        export PATH="$TOOLCHAIN:$PATH"
+        export CC_i686_linux_android="$TOOLCHAIN/i686-linux-android21-clang"
+        export AR_i686_linux_android="$TOOLCHAIN/llvm-ar"
+        cargo build --locked --lib --target i686-linux-android
 
   test_http:
     runs-on: ubuntu-latest

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Publish the HTTP image to this fork's GHCR namespace with `GITHUB_TOKEN`, building the locked DIDKit workspace and pinned sibling SSI source; pull requests build without publishing.
 - Return LDP presentation signing errors from the CLI instead of panicking. CI explicitly checks rejection of raw JWT credentials in LDP presentations, preserving strict JSON-LD data-loss protection.
 - Exercise SSH-agent signing with the correct holder flag and fail on command errors; pin the JNI build to compatible JDK 17.
+- Build Android with pinned NDK r30 and its LLVM tools, including `libunwind` required by current Rust. Android native and Flutter builds now require API 21 or newer instead of API 16.
 
 ## [0.4.0] - 2022-03-03
 ### Added
