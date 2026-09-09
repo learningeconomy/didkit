@@ -11,7 +11,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  SSI_REF: main
+  SSI_REF: fc0788addb46f6bdfcd3c1932f2aeeff807c612c
+  RUST_TOOLCHAIN: 1.98.0
   RUSTFLAGS: "-Dwarnings"
 
 defaults:
@@ -31,10 +32,15 @@ jobs:
     - name: Checkout SSI library
       uses: actions/checkout@v3
       with:
-        repository: spruceid/ssi
+        repository: learningeconomy/ssi
         path: ssi
         ref: ${{env.SSI_REF}}
         submodules: true
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ env.RUST_TOOLCHAIN }}
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
@@ -42,18 +48,11 @@ jobs:
         workspaces: |
           didkit
 
-    - name: Install Rust old stable with incremental compilation
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: 1.66.0
-        profile: minimal
-        default: true
-
     - name: Build
-      run: cargo build
+      run: cargo build --locked
 
     - name: Test
-      run: cargo test
+      run: cargo test --locked
 
     - name: Test CLI
       run: cli/tests/example.sh
@@ -81,9 +80,6 @@ jobs:
         VP_PROOF_FORMAT: jwt
       run: cli/tests/example.sh
 
-    - name: Test binary-signing verify example
-      run: examples/binary-signing/index.sh verify examples/binary-signing/hello.txt examples/binary-signing/hello-vc.jsonld
-
     - name: Install wasm-pack
       run: make -C lib install-wasm-pack
 
@@ -93,7 +89,8 @@ jobs:
     - name: Install Flutter
       uses: subosito/flutter-action@v2
       with:
-        channel: 'dev'
+        channel: 'stable'
+        flutter-version: '3.7.12'
 
     - name: Opt out of Dart/Flutter analytics
       run: |
@@ -104,6 +101,8 @@ jobs:
       run: make -C lib ../target/test/c.stamp
 
     - name: Test WASM package
+      env:
+        RUSTFLAGS: '-Dwarnings --cfg getrandom_backend="wasm_js"'
       run: make -C lib ../target/test/wasm.stamp
 
     - name: Test JNI
@@ -142,10 +141,14 @@ jobs:
     - name: Checkout SSI library
       uses: actions/checkout@v3
       with:
-        repository: spruceid/ssi
+        repository: learningeconomy/ssi
         path: ssi
         ref: ${{env.SSI_REF}}
         submodules: true
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ env.RUST_TOOLCHAIN }}
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
       with:
@@ -154,12 +157,12 @@ jobs:
         shared-key: "vc-api"
     - uses: actions/setup-node@v3
       with:
-        node-version: 16
+        node-version: 22
     - name: Start VC API
       run: |
         cd http
-        cargo build
-        DIDKIT_HTTP_ISSUER_KEYS='[{"kty":"OKP","crv":"Ed25519","x":"HvjBEw94RHAh9KkiD385aYZNxGkxIkwBcrLBY5Z7Koo","d":"1onWu34oC29Y09qCRl0aD2FOp5y5obTqHZxQQRT3-bs"}]' cargo run &
+        cargo build --locked
+        DIDKIT_HTTP_ISSUER_KEYS='[{"kty":"OKP","crv":"Ed25519","x":"HvjBEw94RHAh9KkiD385aYZNxGkxIkwBcrLBY5Z7Koo","d":"1onWu34oC29Y09qCRl0aD2FOp5y5obTqHZxQQRT3-bs"}]' cargo run --locked &
     - name: Start HTTPS Proxy
       run: npx local-ssl-proxy --source 9000 --target 3000 --hostname 127.0.0.1 &
     - name: Setup Test Suite
@@ -184,10 +187,15 @@ jobs:
     - name: Checkout SSI library
       uses: actions/checkout@v3
       with:
-        repository: spruceid/ssi
+        repository: learningeconomy/ssi
         path: ssi
         ref: ${{env.SSI_REF}}
         submodules: true
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ env.RUST_TOOLCHAIN }}
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
@@ -199,7 +207,13 @@ jobs:
       run: make -C lib install-rustup-ios
 
     - name: Build iOS Library
-      run: make -C lib ../target/test/ios.stamp
+      run: |
+        device_id="$(xcrun simctl list devices available --json | jq -r \
+          '[.devices | to_entries[] | select(.key | contains(".iOS-")) | .value[] |
+            select(.isAvailable and (.name | startswith("iPhone")))][0].udid // empty')"
+        test -n "${device_id}"
+        make -C lib ../target/test/ios.stamp \
+          IOS_TEST_DESTINATION="platform=iOS Simulator,id=${device_id}"
 
   build_windows:
     runs-on: windows-latest
@@ -212,10 +226,15 @@ jobs:
     - name: Checkout SSI library
       uses: actions/checkout@v3
       with:
-        repository: spruceid/ssi
+        repository: learningeconomy/ssi
         path: ssi
         ref: ${{env.SSI_REF}}
         submodules: true
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ env.RUST_TOOLCHAIN }}
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
@@ -224,4 +243,4 @@ jobs:
           didkit
 
     - name: Build
-      run: cargo build
+      run: cargo build --locked

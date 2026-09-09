@@ -31,22 +31,6 @@ struct RecipientHeader {
     kid: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Recipient {
-    encrypted_key: String,
-    header: RecipientHeader,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct MultiRecipientJWE {
-    #[serde(rename = "protected")]
-    protected_header: String,
-    iv: String,
-    ciphertext: String,
-    tag: String,
-    recipients: Vec<Recipient>,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct EphemeralPublicKey {
     kty: String,
@@ -172,7 +156,7 @@ impl JWE {
                     Error::JWK(didkit::ssi::jwk::Error::InvalidKeyLength(kek.len()))
                 })?;
 
-                let nonce = XNonce::from_slice(&recipient_iv);
+                let nonce: &XNonce = (&recipient_iv).into();
                 let mut encrypted_key = cipher
                     .encrypt(nonce, &cek[..])
                     .map_err(|_| Error::UnableToGenerateDID)?;
@@ -202,7 +186,7 @@ impl JWE {
         let cipher = XChaCha20Poly1305::new_from_slice(&cek)
             .map_err(|_| Error::JWK(didkit::ssi::jwk::Error::InvalidKeyLength(cek.len())))?;
 
-        let nonce = XNonce::from_slice(&iv);
+        let nonce: &XNonce = (&iv).into();
 
         let payload = Payload {
             msg: content,
@@ -264,7 +248,9 @@ impl JWE {
                     Err(_) => continue,
                 };
 
-                let nonce = XNonce::from_slice(&recipient_iv);
+                let nonce: &XNonce = <&[u8; 24]>::try_from(recipient_iv.as_slice())
+                    .expect("XChaCha20Poly1305 nonce must contain 24 bytes")
+                    .into();
 
                 let recipient_tag = match URL_SAFE_NO_PAD.decode(&recipient.header.tag) {
                     Ok(recipient_tag) => recipient_tag,
@@ -296,7 +282,9 @@ impl JWE {
                     Err(_) => continue,
                 };
 
-                let content_nonce = XNonce::from_slice(iv.as_slice());
+                let content_nonce: &XNonce = <&[u8; 24]>::try_from(iv.as_slice())
+                    .expect("XChaCha20Poly1305 nonce must contain 24 bytes")
+                    .into();
                 let mut ciphertext_with_tag = match URL_SAFE_NO_PAD.decode(&self.ciphertext) {
                     Ok(ciphertext) => ciphertext,
                     Err(_) => continue,

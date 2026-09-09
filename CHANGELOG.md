@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- LC-2160: remove unused web dalek v1 and rand 0.7 dependencies, configure both getrandom JS feature graphs, and upgrade the HTTP JSON-string adapter to patched serde_with 3.x.
+- Track the independent workspace lock, resolved with SSI at `fc0788addb46f6bdfcd3c1932f2aeeff807c612c`. SSI is a path dependency, so `Cargo.lock` does not pin its revision; consumer workspaces still own their native/WASM locks. RSA Marvin remains unresolved and requires separate deployment risk approval.
+
 ## [0.4.0] - 2022-03-03
 ### Added
 - DID Resolution function added to didkit-node ([#237](https://github.com/spruceid/didkit/pull/237)).
