@@ -58,6 +58,21 @@ pub struct JWTOrLDPOptions {
     /// Proof format (not standard in vc-api)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub proof_format: Option<ProofFormat>,
+    /// Renewal-only opt-in for compact JWT **credential** verification.
+    ///
+    /// When `Some(true)` and `proof_format` is `jwt`, an otherwise valid
+    /// credential JWS whose `exp` is already in the past is accepted, and the
+    /// successful `VerificationResult` additionally reports the
+    /// `JWSRenewalExpired` check. The result is **renewal-only valid** and must
+    /// not be treated as ordinary credential validity. `nbf`, signature, issuer
+    /// key authorization, proof purpose, nonce and audience checks are
+    /// unchanged.
+    ///
+    /// The option is rejected (not silently ignored) for linked-data proofs and
+    /// for presentation verification: only compact JWT credentials may use it.
+    /// The default is `None`, which keeps every existing caller strict.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_expired_credential: Option<bool>,
 }
 
 impl JWTOrLDPOptions {
@@ -68,7 +83,14 @@ impl JWTOrLDPOptions {
                 ..Default::default()
             },
             proof_format: None,
+            allow_expired_credential: None,
         }
+    }
+
+    /// Whether the caller explicitly requested renewal-only credential
+    /// verification. Absent or `false` means strict.
+    pub fn allow_expired_credential(&self) -> bool {
+        self.allow_expired_credential == Some(true)
     }
 }
 
@@ -165,4 +187,42 @@ pub async fn generate_proof(
     };
 
     Ok(proof)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn jwt_or_ldp_options_defaults_are_strict() {
+        // Existing callers send no renewal flag: it must default to absent and
+        // therefore strict.
+        let options: JWTOrLDPOptions = serde_json::from_str("{}").unwrap();
+        assert_eq!(options.allow_expired_credential, None);
+        assert!(!options.allow_expired_credential());
+        assert_eq!(options.proof_format, None);
+
+        let default_vp = JWTOrLDPOptions::default_for_vp();
+        assert_eq!(default_vp.allow_expired_credential, None);
+        assert!(!default_vp.allow_expired_credential());
+    }
+
+    #[test]
+    fn jwt_or_ldp_options_deserializes_renewal_opt_in() {
+        let options: JWTOrLDPOptions =
+            serde_json::from_str(r#"{"proofFormat":"jwt","allowExpiredCredential":true}"#).unwrap();
+        assert_eq!(options.proof_format, Some(ProofFormat::JWT));
+        assert!(options.allow_expired_credential());
+
+        let off: JWTOrLDPOptions =
+            serde_json::from_str(r#"{"proofFormat":"jwt","allowExpiredCredential":false}"#)
+                .unwrap();
+        assert!(!off.allow_expired_credential());
+    }
+
+    #[test]
+    fn jwt_or_ldp_options_rejects_unknown_fields() {
+        // The renewal option is explicit and narrowly named; typos stay errors.
+        assert!(serde_json::from_str::<JWTOrLDPOptions>(r#"{"allowExpired":true}"#).is_err());
+    }
 }
