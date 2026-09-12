@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  SSI_REF: 9e2783f9f759fc92617f6c27b1c77ec0599cf9a0
+  SSI_REF: 9a4acff913370dbc0f7f796238d6b88731263bc1
 
 jobs:
   build-and-push:
