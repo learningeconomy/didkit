@@ -93,10 +93,19 @@ pub async fn verify(
     let resolver = DID_METHODS.to_resolver();
     let mut context_loader = ContextLoader::default();
     let options = req.options.unwrap_or_default();
+    let allow_expired_credential = options.allow_expired_credential();
     let ldp_options = options.ldp_options;
     let res = match (options.proof_format, req.verifiable_credential) {
         (Some(ProofFormat::LDP), CredentialOrJWT::Credential(vc))
         | (None, CredentialOrJWT::Credential(vc)) => {
+            if allow_expired_credential {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    "allowExpiredCredential is only supported for compact JWT credentials"
+                        .to_string(),
+                )
+                    .into());
+            }
             if let Err(e) = vc.validate() {
                 return Err((StatusCode::BAD_REQUEST, e.to_string()).into());
             }
@@ -105,13 +114,23 @@ pub async fn verify(
         }
         (Some(ProofFormat::JWT), CredentialOrJWT::JWT(vc_jwt))
         | (None, CredentialOrJWT::JWT(vc_jwt)) => {
-            VerifiableCredential::verify_jwt(
-                &vc_jwt,
-                Some(ldp_options),
-                resolver,
-                &mut context_loader,
-            )
-            .await
+            if allow_expired_credential {
+                VerifiableCredential::verify_jwt_renewal(
+                    &vc_jwt,
+                    Some(ldp_options),
+                    resolver,
+                    &mut context_loader,
+                )
+                .await
+            } else {
+                VerifiableCredential::verify_jwt(
+                    &vc_jwt,
+                    Some(ldp_options),
+                    resolver,
+                    &mut context_loader,
+                )
+                .await
+            }
         }
         (Some(proof_format), vc) => {
             let err_msg = format!(
