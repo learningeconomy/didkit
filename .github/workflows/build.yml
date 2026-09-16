@@ -55,6 +55,9 @@ jobs:
     - name: Test
       run: cargo test --locked
 
+    - name: Test WASM JWE encryption
+      run: cargo test --locked -p didkit-wasm --lib jwe::tests
+
     - name: Test CLI
       run: cli/tests/example.sh
 
