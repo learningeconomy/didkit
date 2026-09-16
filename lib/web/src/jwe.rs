@@ -110,9 +110,7 @@ impl JWE {
                             }
                         // 3) publicKeyMultibase (Multikey)
                         } else if let Some(ps) = &vm.property_set {
-                            if let Some(mb) = ps
-                                .get("publicKeyMultibase")
-                                .and_then(|v| v.as_str())
+                            if let Some(mb) = ps.get("publicKeyMultibase").and_then(|v| v.as_str())
                             {
                                 decode_public_key_multibase(mb)
                             } else {
@@ -139,7 +137,7 @@ impl JWE {
                 let mut recipient_iv = [0u8; 24]; // Updated to 24 bytes
                 rng.fill_bytes(&mut recipient_iv);
 
-                let ephemeral_secret = StaticSecret::from([0u8; 32]);
+                let ephemeral_secret = StaticSecret::random_from_rng(&mut rng);
                 let ephemeral_public = X25519Public::from(&ephemeral_secret);
 
                 let shared_secret = ephemeral_secret.diffie_hellman(&receiver_mont);
@@ -412,6 +410,60 @@ fn decode_public_key_multibase(mb: &str) -> Option<Vec<u8>> {
 mod tests {
     use super::*;
     use didkit::Source;
+
+    #[tokio::test]
+    async fn test_ephemeral_keys_are_fresh_and_not_publicly_derivable() -> Result<(), Error> {
+        let receiver = JWK::generate_ed25519()?;
+        let receiver_did = DID_METHODS
+            .generate(&Source::KeyAndPattern(&receiver, "key"))
+            .ok_or(Error::UnableToGenerateDID)?;
+        let receiver_public = match &receiver.params {
+            Params::OKP(params) => curve25519_dalek::edwards::CompressedEdwardsY(
+                <[u8; 32]>::try_from(params.public_key.0.as_slice()).unwrap(),
+            )
+            .decompress()
+            .unwrap()
+            .to_montgomery(),
+            _ => unreachable!(),
+        };
+        // Model an observer with only the recipient's public key and ciphertext.
+        let known_secret = StaticSecret::from([0u8; 32]);
+        let shared = known_secret.diffie_hellman(&X25519Public::from(receiver_public.to_bytes()));
+        let wrapping_key = concat_kdf(shared.as_bytes(), 256, "ECDH-ES+XC20PKW", None);
+        let attacker_cipher = XChaCha20Poly1305::new_from_slice(&wrapping_key).unwrap();
+        let mut ephemeral_keys = std::collections::HashSet::new();
+
+        // Repeating a recipient exercises freshness both within and across JWEs.
+        for _ in 0..2 {
+            let jwe = JWE::encrypt(
+                b"private message",
+                &[receiver_did.clone(), receiver_did.clone()],
+            )
+            .await?;
+            assert_eq!(jwe.recipients.len(), 2);
+            for recipient in &jwe.recipients {
+                let mut wrapped_key = URL_SAFE_NO_PAD.decode(&recipient.encrypted_key).unwrap();
+                wrapped_key.extend(URL_SAFE_NO_PAD.decode(&recipient.header.tag).unwrap());
+                let nonce = URL_SAFE_NO_PAD.decode(&recipient.header.iv).unwrap();
+                let nonce = XNonce::from(<[u8; 24]>::try_from(nonce.as_slice()).unwrap());
+                assert!(
+                    attacker_cipher
+                        .decrypt(&nonce, wrapped_key.as_slice())
+                        .is_err(),
+                    "a public observer must not recover the content encryption key"
+                );
+                assert!(
+                    ephemeral_keys.insert(recipient.header.epk.x.clone()),
+                    "each recipient encryption must use a fresh ephemeral key"
+                );
+            }
+            assert_eq!(
+                jwe.decrypt(&[receiver.clone()]).unwrap(),
+                b"private message"
+            );
+        }
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_encryption() -> Result<(), Error> {
