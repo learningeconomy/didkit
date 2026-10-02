@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- LC-2200: upgrade the required C-header generator to cbindgen 0.29.4 with its unused CLI feature disabled, removing clap 2.x and atty from the workspace lockfile while preserving C, iOS, Flutter, core, and WASM consumers.
 - LC-2160: remove unused web dalek v1 and rand 0.7 dependencies, configure both getrandom JS feature graphs, and upgrade the HTTP JSON-string adapter to patched serde_with 3.x.
 - Track the independent workspace lock, resolved with SSI at `9e2783f9f759fc92617f6c27b1c77ec0599cf9a0`. SSI is a path dependency, so `Cargo.lock` does not pin its revision; consumer workspaces still own their native/WASM locks. RSA Marvin remains unresolved and requires separate deployment risk approval.
 - Publish the HTTP image to this fork's GHCR namespace with `GITHUB_TOKEN`, building the locked DIDKit workspace and pinned sibling SSI source; pull requests build without publishing.
