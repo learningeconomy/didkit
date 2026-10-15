@@ -25,3 +25,9 @@ sign-tag = true
 tag-prefix = "{{crate_name}}/"
 tag-message = "Release {{crate_name}} version {{version}}."
 pre-release-commit-message = "Release"
+
+# Cargo only applies build profiles defined at the workspace root.
+[profile.release]
+strip = true
+lto = true
+opt-level = 'z'

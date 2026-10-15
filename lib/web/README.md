@@ -56,6 +56,30 @@ $ wasm-pack build --target web
 
 The manual tests in `test/` serve as an example on how to import DIDKit.
 
+### Release size optimization
+
+The release profile is defined in the workspace-root `Cargo.toml`; Cargo ignores
+profiles defined in this member crate. Release builds use size optimization, LTO,
+and stripping. These settings apply to all release builds in the workspace.
+
+`wasm-pack` does not run Binaryen automatically for this crate. For an additional
+size reduction, run the following after `wasm-pack build --target web --release`
+(tested with Binaryen 132):
+
+```bash
+wasm-opt -Oz \
+  --enable-mutable-globals --enable-nontrapping-float-to-int \
+  --enable-bulk-memory --enable-sign-ext \
+  --enable-reference-types --enable-multivalue \
+  pkg/didkit_wasm_bg.wasm -o pkg/didkit_wasm_bg.optimized.wasm
+mv pkg/didkit_wasm_bg.optimized.wasm pkg/didkit_wasm_bg.wasm
+```
+
+Stripping removes the target-feature metadata, so Binaryen needs the supported
+features explicitly. Avoid `--all-features`: it can introduce proposals that the
+target browser does not support. Keep the generated JavaScript glue paired with
+its WASM binary.
+
 ## Tests
 
 The `test/` directory contains manual tests to run in the browser. Instructions
