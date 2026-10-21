@@ -1,0 +1,8 @@
+**
+!didkit/
+!didkit/**
+!ssi/
+!ssi/**
+**/.git
+**/target
+**/node_modules

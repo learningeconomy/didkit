@@ -136,35 +136,64 @@ EOF
 # verifiable presentation. DIDKit signs the presentation with a linked data
 # proof, using the given keypair, verification method and proof type. We save
 # the resulting newly created verifiable presentation to a file.
-didkit vc-issue-presentation \
+if presentation_issue_error=$(didkit vc-issue-presentation \
 	-k key.jwk \
 	-f "$vp_proof_format" \
 	< presentation-unsigned.jsonld \
-	> presentation-signed
-echo 'Issued verifiable presentation:'
-if [ "$vp_proof_format" = jwt ]; then
-	cat presentation-signed
-else
-	print_json presentation-signed
-fi
-echo
-
-# Verify verifiable presentation.
-# Pass the verifiable presentation back to didkit for verification.
-# Examine the verification result JSON.
-if ! didkit vc-verify-presentation \
-	-v "$verification_method" \
-	-p authentication \
-	-f "$vp_proof_format" \
-	< presentation-signed \
-	> presentation-verify-result.json
+	2>&1 > presentation-signed)
 then
-	echo 'Unable to verify presentation:'
-	print_json presentation-verify-result.json
-	exit 1
+	presentation_issue_status=0
+else
+	presentation_issue_status=$?
 fi
-echo 'Verified verifiable presentation:'
-print_json presentation-verify-result.json
+if [ -n "$presentation_issue_error" ]; then
+	printf '%s\n' "$presentation_issue_error" >&2
+fi
+
+if [ "$vc_proof_format" = jwt ] && [ "$vp_proof_format" = ldp ]; then
+	# The credentials/v1 context treats verifiableCredential as an IRI/graph,
+	# not a JWT literal. Reject this input rather than sign RDF that omits it.
+	if [ "$presentation_issue_status" -ne 1 ] || [ -s presentation-signed ]; then
+		echo 'Expected raw JWT credential in LDP presentation to be rejected without output.' >&2
+		exit 1
+	fi
+	case "$presentation_issue_error" in
+		*DATA_LOSS_DETECTION_ERROR:*)
+			echo 'Correctly rejected raw JWT credential in LDP presentation.'
+			;;
+		*)
+			echo 'Presentation issuance failed for a reason other than JSON-LD data loss.' >&2
+			exit 1
+			;;
+	esac
+elif [ "$presentation_issue_status" -ne 0 ]; then
+	exit "$presentation_issue_status"
+else
+	echo 'Issued verifiable presentation:'
+	if [ "$vp_proof_format" = jwt ]; then
+		cat presentation-signed
+	else
+		print_json presentation-signed
+	fi
+	echo
+
+	# Verify verifiable presentation.
+	# Pass the verifiable presentation back to didkit for verification.
+	# Examine the verification result JSON.
+	if ! didkit vc-verify-presentation \
+		-v "$verification_method" \
+		-p authentication \
+		-f "$vp_proof_format" \
+		< presentation-signed \
+		> presentation-verify-result.json
+	then
+		echo 'Unable to verify presentation:'
+		print_json presentation-verify-result.json
+		exit 1
+	fi
+	echo 'Verified verifiable presentation:'
+	print_json presentation-verify-result.json
+fi
 echo
 
 # Resolve a DID.

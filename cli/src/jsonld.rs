@@ -95,7 +95,7 @@ pub async fn to_rdfurdna(args: JsonldToRDFURDNAArgs) -> Result<()> {
         .cloned_quads()
         .map(|q| q.map_predicate(|p| p.into_iri().unwrap()))
         .collect();
-    let dataset_normalized = ssi::urdna2015::normalize(dataset.quads().map(Into::into));
+    let dataset_normalized = ssi::urdna2015::normalize(dataset.quads().map(Into::into))?;
     let normalized = dataset_normalized.into_nquads();
     stdout().write_all(normalized.as_bytes()).unwrap();
     Ok(())
