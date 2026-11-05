@@ -465,6 +465,7 @@ async fn verify_credential(
 ) -> Result<String, Error> {
     let options: JWTOrLDPOptions = serde_json::from_str(&proof_options)?;
     let context_map: HashMap<String, String> = serde_json::from_str(&context_map)?;
+    let allow_expired_credential = options.allow_expired_credential();
     let proof_format = options.proof_format.unwrap_or_default();
     let resolver = DID_METHODS.to_resolver();
     let mut context_loader = ssi::jsonld::ContextLoader::default()
@@ -472,15 +473,32 @@ async fn verify_credential(
         .unwrap();
     let result = match proof_format {
         ProofFormat::JWT => {
-            VerifiableCredential::verify_jwt(
-                &vc_string,
-                Some(options.ldp_options),
-                resolver,
-                &mut context_loader,
-            )
-            .await
+            if allow_expired_credential {
+                // Renewal-only verification: credential-only, strict on `nbf`,
+                // signature, issuer key authorization, purpose, nonce and aud.
+                VerifiableCredential::verify_jwt_renewal(
+                    &vc_string,
+                    Some(options.ldp_options),
+                    resolver,
+                    &mut context_loader,
+                )
+                .await
+            } else {
+                VerifiableCredential::verify_jwt(
+                    &vc_string,
+                    Some(options.ldp_options),
+                    resolver,
+                    &mut context_loader,
+                )
+                .await
+            }
         }
         ProofFormat::LDP => {
+            if allow_expired_credential {
+                return Err(Error::CredentialRenewalUnsupported(
+                    "linked-data-proof credential verification".to_string(),
+                ));
+            }
             let vc = VerifiableCredential::from_json_unsigned(&vc_string)?;
             vc.verify(Some(options.ldp_options), resolver, &mut context_loader)
                 .await
@@ -653,6 +671,13 @@ async fn verify_presentation(
 ) -> Result<String, Error> {
     let options: JWTOrLDPOptions = serde_json::from_str(&proof_options)?;
     let context_map: HashMap<String, String> = serde_json::from_str(&context_map)?;
+    if options.allow_expired_credential() {
+        // The renewal-only policy is credential-only. Never silently weaken
+        // presentation verification.
+        return Err(Error::CredentialRenewalUnsupported(
+            "presentation verification".to_string(),
+        ));
+    }
     let proof_format = options.proof_format.unwrap_or_default();
     let resolver = DID_METHODS.to_resolver();
     let mut context_loader = ssi::jsonld::ContextLoader::default()
