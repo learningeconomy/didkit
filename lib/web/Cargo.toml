@@ -52,7 +52,8 @@ crate-type = ["cdylib"]
 wasm-opt = false
 
 [features]
-default = ["generate", "issue", "verify", "invoke", "delegate"]
+# zcap exports (invoke, delegate) are opt-in: LearnCard doesn't call them and they cost ~45 KB.
+default = ["generate", "issue", "verify"]
 
 generate = []
 issue = []

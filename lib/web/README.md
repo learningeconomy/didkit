@@ -109,5 +109,6 @@ wasm-pack build --out-dir pkg -- --no-default-features --features=issue        #
 wasm-pack build --out-dir pkg -- --no-default-features --features=verify       # verify credential/presentation
 wasm-pack build --out-dir pkg -- --no-default-features --features=credential   # issue/verify credential
 wasm-pack build --out-dir pkg -- --no-default-features --features=presentation # issue/verify presentation
+wasm-pack build --out-dir pkg -- --features=invoke,delegate                       # default set plus the zcap exports
 ```
 *don't forget to add `TARGET_CC` and `TARGET_AR` if using `ring` with `wasm32_c`*

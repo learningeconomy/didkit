@@ -9,6 +9,7 @@ use didkit::ResolutionResult;
 use iref::*;
 use js_sys::Promise;
 use jwe::JWE;
+#[cfg(any(feature = "delegate", feature = "zcap", feature = "invoke"))]
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
@@ -21,6 +22,10 @@ use didkit::error::{didkit_error_code, didkit_error_message};
 use didkit::get_verification_method;
 use didkit::ssi::{self, ldp::ProofSuite};
 use didkit::DIDWeb;
+#[cfg(any(feature = "delegate", feature = "zcap", feature = "invoke"))]
+use didkit::Delegation;
+#[cfg(any(feature = "invoke", feature = "zcap"))]
+use didkit::Invocation;
 use didkit::LinkedDataProofOptions;
 use didkit::ProofPreparation;
 use didkit::Source;
@@ -28,8 +33,9 @@ use didkit::VerifiableCredential;
 use didkit::VerifiablePresentation;
 use didkit::DID_METHODS;
 use didkit::JWK;
-use didkit::{Delegation, Invocation};
-use didkit::{JWTOrLDPOptions, ProofFormat, URI};
+#[cfg(any(feature = "invoke", feature = "zcap"))]
+use didkit::URI;
+use didkit::{JWTOrLDPOptions, ProofFormat};
 
 pub static VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -825,6 +831,7 @@ pub fn delegateCapability(
     ))
 }
 
+#[cfg(any(feature = "delegate", feature = "zcap"))]
 async fn prepare_delegate_capability(
     capability: String,
     linked_data_proof_options: String,
@@ -867,6 +874,7 @@ pub fn prepareDelegateCapability(
     ))
 }
 
+#[cfg(any(feature = "delegate", feature = "zcap"))]
 async fn complete_delegate_capability(
     capability: String,
     preparation: String,
@@ -957,6 +965,7 @@ pub fn invokeCapability(
     ))
 }
 
+#[cfg(any(feature = "invoke", feature = "zcap"))]
 async fn prepare_invoke_capability(
     invocation: String,
     target_id: String,
@@ -998,6 +1007,7 @@ pub fn prepareInvokeCapability(
     ))
 }
 
+#[cfg(any(feature = "invoke", feature = "zcap"))]
 async fn complete_invoke_capability(
     invocation: String,
     preparation: String,
