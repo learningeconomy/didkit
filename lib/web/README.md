@@ -75,6 +75,16 @@ wasm-opt -Oz \
 mv pkg/didkit_wasm_bg.optimized.wasm pkg/didkit_wasm_bg.wasm
 ```
 
+What the default WASM build leaves out to save space:
+
+- the zcap exports (`delegateCapability`, `invokeCapability` and friends).
+  Build with `--features invoke,delegate` to include them.
+- `did:webkey`, `did:onion` and `did:ion`. didkit-wasm depends on `didkit`
+  with `default-features = false`, and those methods are default features of
+  `didkit`. None of them works in a browser: `did:ion` and `did:onion` need
+  an endpoint from an environment variable, and `did:webkey` pulls in a full
+  OpenPGP stack.
+
 Stripping removes the target-feature metadata, so Binaryen needs the supported
 features explicitly. Avoid `--all-features`: it can introduce proposals that the
 target browser does not support. Keep the generated JavaScript glue paired with
