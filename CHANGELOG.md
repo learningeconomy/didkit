@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- LC-2429: shrink the default didkit-wasm build. The release profile now uses `codegen-units = 1` for every release build in the workspace.
+- LC-2429: `did:webkey`, `did:onion` and `did:ion` are now default features of the `didkit` crate (`did-webkey`, `did-onion`, `did-ion`). The CLI, HTTP server and native bindings keep them. Crates that depend on `didkit` with `default-features = false` have to turn them on to keep those methods.
+
+### Removed
+- LC-2429: the default didkit-wasm build no longer has the zcap exports (`delegateCapability`, `invokeCapability` and the rest). Build with `--features invoke,delegate` to get them back.
+- LC-2429: the default didkit-wasm build no longer resolves `did:webkey`, `did:onion` or `did:ion`; `resolveDID` returns `methodNotSupported`. `did:ion` and `did:onion` never worked in a browser, and `did:webkey` was the only reason the OpenPGP stack was linked in. See `lib/web/README.md`.
+
 ### Fixed
 - LC-2200: upgrade the required C-header generator to cbindgen 0.29.4 with its unused CLI feature disabled, removing clap 2.x and atty from the workspace lockfile while preserving C, iOS, Flutter, core, and WASM consumers.
 - LC-2160: remove unused web dalek v1 and rand 0.7 dependencies, configure both getrandom JS feature graphs, and upgrade the HTTP JSON-string adapter to patched serde_with 3.x.

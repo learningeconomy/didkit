@@ -17,7 +17,8 @@ getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
 chrono = { version = "0.4", features = ["wasmbind"] }
 iref = "^2.0.3"
 rand_chacha = "0.3"
-x25519-dalek = "2.0"
+# jwe.rs needs StaticSecret. pgp (did:webkey) used to turn this feature on for us.
+x25519-dalek = { version = "2.0", features = ["static_secrets"] }
 curve25519-dalek = "4.0"
 aes-gcm = "0.10"
 base64 = "0.21"
@@ -52,7 +53,8 @@ crate-type = ["cdylib"]
 wasm-opt = false
 
 [features]
-default = ["generate", "issue", "verify", "invoke", "delegate"]
+# zcap exports (invoke, delegate) are opt-in: LearnCard doesn't call them and they cost ~45 KB.
+default = ["generate", "issue", "verify"]
 
 generate = []
 issue = []

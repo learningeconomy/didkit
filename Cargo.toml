@@ -31,3 +31,5 @@ pre-release-commit-message = "Release"
 strip = true
 lto = true
 opt-level = 'z'
+# One codegen unit lets LLVM inline and dedupe across the whole crate graph: ~-164 KB on the WASM.
+codegen-units = 1

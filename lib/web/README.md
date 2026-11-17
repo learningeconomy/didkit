@@ -88,11 +88,29 @@ In this WASM build:
   secp256k1 and P-256 keys), `did:tz`, `did:ethr`, `did:pkh` and `did:jwk`.
 - `resolveDID` can resolve `did:key`, `did:web`, `did:tz`, `did:ethr`,
   `did:pkh` and `did:jwk`.
-- `did:ion` and `did:onion` don't resolve. Both read their endpoint from an
-  environment variable (`DID_ION_API_URL`, `DID_ONION_PROXY_URL`), and a
-  browser has none: `did:ion` fails with `Missing Sidetree API endpoint`, and
-  `did:onion` tries a plain HTTP request to the `.onion` host. Use the native
-  library or CLI for those methods.
+- `did:webkey`, `did:onion` and `did:ion` aren't in this build, so
+  `resolveDID` returns `methodNotSupported` for them. Use the native library,
+  CLI or HTTP server for those methods; they keep all three.
+
+## What the WASM build leaves out
+
+The default build drops these to save space (LC-2429). If you're upgrading
+from an older didkit-wasm and call any of them, this is what changes:
+
+- **The zcap exports.** `delegateCapability`, `prepareDelegateCapability`,
+  `completeDelegateCapability`, `verifyDelegation`, `invokeCapability`,
+  `prepareInvokeCapability`, `completeInvokeCapability`,
+  `verifyInvocationSignature` and `verifyInvocation` aren't in the default
+  build's JS API. Build with `--features invoke,delegate` to get them back.
+- **`did:webkey`, `did:onion` and `did:ion`.** These are now default features
+  of the `didkit` crate (`did-webkey`, `did-onion`, `did-ion`). didkit-wasm
+  depends on `didkit` with `default-features = false`, so it leaves them out.
+  None of them worked in a browser anyway: `did:ion` and `did:onion` read
+  their endpoint from an environment variable a browser doesn't have, and
+  `did:webkey` pulled in a whole OpenPGP stack.
+
+JSON Schema (`credentialSchema`) validation and the built-in JSON-LD contexts,
+including schema.org and W3C CCG traceability, stay in the default build.
 
 ## Tests
 
@@ -123,5 +141,6 @@ wasm-pack build --out-dir pkg -- --no-default-features --features=issue        #
 wasm-pack build --out-dir pkg -- --no-default-features --features=verify       # verify credential/presentation
 wasm-pack build --out-dir pkg -- --no-default-features --features=credential   # issue/verify credential
 wasm-pack build --out-dir pkg -- --no-default-features --features=presentation # issue/verify presentation
+wasm-pack build --out-dir pkg -- --features=invoke,delegate                       # default set plus the zcap exports
 ```
 *don't forget to add `TARGET_CC` and `TARGET_AR` if using `ring` with `wasm32_c`*
