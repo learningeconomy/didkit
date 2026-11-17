@@ -1101,3 +1101,30 @@ async fn context_loader(url: String) -> Result<String, Error> {
 pub fn contextLoader(url: String) -> Promise {
     map_async_jsvalue(context_loader(url))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    // LearnCard derives its secp256k1 key from seed bytes, then asks for a did:key.
+    #[cfg(feature = "generate")]
+    #[tokio::test]
+    async fn secp256k1_key_to_did_key_round_trips() {
+        let jwk = generate_secp256k1_key_from_bytes(&[7u8; 32]).unwrap();
+
+        let did = key_to_did("key".to_string(), jwk.clone()).unwrap();
+        assert!(did.starts_with("did:key:zQ3s"), "unexpected did: {}", did);
+
+        let doc: Value =
+            serde_json::from_str(&resolve_did(did.clone(), "{}".to_string()).await.unwrap())
+                .unwrap();
+        assert_eq!(doc["id"], did.as_str());
+
+        let key: Value = serde_json::from_str(&jwk).unwrap();
+        let resolved_key = &doc["verificationMethod"][0]["publicKeyJwk"];
+        assert_eq!(resolved_key["crv"], "secp256k1");
+        assert_eq!(resolved_key["x"], key["x"]);
+        assert_eq!(resolved_key["y"], key["y"]);
+    }
+}

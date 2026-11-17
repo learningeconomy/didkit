@@ -90,6 +90,20 @@ features explicitly. Avoid `--all-features`: it can introduce proposals that the
 target browser does not support. Keep the generated JavaScript glue paired with
 its WASM binary.
 
+## DID methods
+
+In this WASM build:
+
+- `keyToDID` and `keyToVerificationMethod` can generate `did:key` (Ed25519,
+  secp256k1 and P-256 keys), `did:tz`, `did:ethr`, `did:pkh` and `did:jwk`.
+- `resolveDID` can resolve `did:key`, `did:web`, `did:tz`, `did:ethr`,
+  `did:pkh` and `did:jwk`.
+- `did:ion` and `did:onion` don't resolve. Both read their endpoint from an
+  environment variable (`DID_ION_API_URL`, `DID_ONION_PROXY_URL`), and a
+  browser has none: `did:ion` fails with `Missing Sidetree API endpoint`, and
+  `did:onion` tries a plain HTTP request to the `.onion` host. Use the native
+  library or CLI for those methods.
+
 ## Tests
 
 The `test/` directory contains manual tests to run in the browser. Instructions
