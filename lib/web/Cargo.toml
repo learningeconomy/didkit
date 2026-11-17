@@ -42,6 +42,15 @@ features = ["ed25519", "rsa", "ripemd-160", "eip", "tezos", "secp256r1"]
 path = "../../../ssi/did-ethr"
 default-features = false
 
+# Subtractive ssi features that keep big, rarely used pieces out of the WASM.
+# They only apply to this crate's build graph (LC-2429).
+[dependencies.ssi-json-ld]
+path = "../../../ssi/ssi-json-ld"
+default-features = false
+# schema.org and W3C CCG traceability contexts (~323 KB): callers pass them in
+# the context map when they need them.
+features = ["omit-large-contexts"]
+
 [dev-dependencies]
 wasm-bindgen-test = "0.2"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
