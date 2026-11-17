@@ -1853,6 +1853,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "ssi-json-ld",
+ "ssi-vc",
  "thiserror 1.0.69",
  "tokio",
  "unsigned-varint",
