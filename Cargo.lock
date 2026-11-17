@@ -1852,7 +1852,6 @@ dependencies = [
  "serde-wasm-bindgen",
  "serde_json",
  "sha2 0.10.9",
- "ssi-json-ld",
  "thiserror 1.0.69",
  "tokio",
  "unsigned-varint",
