@@ -75,16 +75,6 @@ wasm-opt -Oz \
 mv pkg/didkit_wasm_bg.optimized.wasm pkg/didkit_wasm_bg.wasm
 ```
 
-What the default WASM build leaves out to save space:
-
-- the zcap exports (`delegateCapability`, `invokeCapability` and friends).
-  Build with `--features invoke,delegate` to include them.
-- `did:webkey`, `did:onion` and `did:ion`. didkit-wasm depends on `didkit`
-  with `default-features = false`, and those methods are default features of
-  `didkit`. None of them works in a browser: `did:ion` and `did:onion` need
-  an endpoint from an environment variable, and `did:webkey` pulls in a full
-  OpenPGP stack.
-
 Stripping removes the target-feature metadata, so Binaryen needs the supported
 features explicitly. Avoid `--all-features`: it can introduce proposals that the
 target browser does not support. Keep the generated JavaScript glue paired with
@@ -98,11 +88,29 @@ In this WASM build:
   secp256k1 and P-256 keys), `did:tz`, `did:ethr`, `did:pkh` and `did:jwk`.
 - `resolveDID` can resolve `did:key`, `did:web`, `did:tz`, `did:ethr`,
   `did:pkh` and `did:jwk`.
-- `did:ion` and `did:onion` don't resolve. Both read their endpoint from an
-  environment variable (`DID_ION_API_URL`, `DID_ONION_PROXY_URL`), and a
-  browser has none: `did:ion` fails with `Missing Sidetree API endpoint`, and
-  `did:onion` tries a plain HTTP request to the `.onion` host. Use the native
-  library or CLI for those methods.
+- `did:webkey`, `did:onion` and `did:ion` aren't in this build, so
+  `resolveDID` returns `methodNotSupported` for them. Use the native library,
+  CLI or HTTP server for those methods; they keep all three.
+
+## What the WASM build leaves out
+
+The default build drops these to save space (LC-2429). If you're upgrading
+from an older didkit-wasm and call any of them, this is what changes:
+
+- **The zcap exports.** `delegateCapability`, `prepareDelegateCapability`,
+  `completeDelegateCapability`, `verifyDelegation`, `invokeCapability`,
+  `prepareInvokeCapability`, `completeInvokeCapability`,
+  `verifyInvocationSignature` and `verifyInvocation` aren't in the default
+  build's JS API. Build with `--features invoke,delegate` to get them back.
+- **`did:webkey`, `did:onion` and `did:ion`.** These are now default features
+  of the `didkit` crate (`did-webkey`, `did-onion`, `did-ion`). didkit-wasm
+  depends on `didkit` with `default-features = false`, so it leaves them out.
+  None of them worked in a browser anyway: `did:ion` and `did:onion` read
+  their endpoint from an environment variable a browser doesn't have, and
+  `did:webkey` pulled in a whole OpenPGP stack.
+
+JSON Schema (`credentialSchema`) validation and the built-in JSON-LD contexts,
+including schema.org and W3C CCG traceability, stay in the default build.
 
 ## Tests
 
