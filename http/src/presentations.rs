@@ -96,6 +96,13 @@ pub async fn verify(Json(req): Json<VerifyRequest>) -> Result<Json<VerificationR
     let resolver = DID_METHODS.to_resolver();
     let mut context_loader = ContextLoader::default();
     let options = req.options.unwrap_or_default();
+    if options.allow_expired_credential() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "allowExpiredCredential is not supported for presentation verification".to_string(),
+        )
+            .into());
+    }
     let ldp_options = options.ldp_options;
     let res = match (options.proof_format, req.verifiable_presentation) {
         (Some(ProofFormat::LDP), PresentationOrJWT::VP(vp)) | (None, PresentationOrJWT::VP(vp)) => {

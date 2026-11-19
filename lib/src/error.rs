@@ -33,6 +33,10 @@ pub enum Error {
     UnableToGetVerificationMethod,
     #[error("Unknown proof format: {0}")]
     UnknownProofFormat(String),
+    #[error(
+        "allowExpiredCredential (renewal-only credential verification) is not supported for {0}"
+    )]
+    CredentialRenewalUnsupported(String),
 
     #[doc(hidden)]
     #[error("")]
